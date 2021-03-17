@@ -1,0 +1,66 @@
+com/strangequark/musicplayer/DeletePlaylistDialog.java
+ com.strangequark.musicplayer.DeletePlaylistDialog
+ com.strangequark.musicplayer.DeletePlaylistDialog$1
+ com.strangequark.musicplayer.DeletePlaylistDialog$2
+com/strangequark/musicplayer/PlaylistDialog.java
+ com.strangequark.musicplayer.PlaylistDialog
+ com.strangequark.musicplayer.PlaylistDialog$1
+ com.strangequark.musicplayer.PlaylistDialog$2
+com/strangequark/musicplayer/fragments/PlaylistsFragment.java
+ com.strangequark.musicplayer.fragments.PlaylistsFragment
+ com.strangequark.musicplayer.fragments.PlaylistsFragment$1
+ com.strangequark.musicplayer.fragments.PlaylistsFragment$2
+com/strangequark/musicplayer/EditPlaylistDialog.java
+ com.strangequark.musicplayer.EditPlaylistDialog
+ com.strangequark.musicplayer.EditPlaylistDialog$1
+ com.strangequark.musicplayer.EditPlaylistDialog$2
+ com.strangequark.musicplayer.EditPlaylistDialog$3
+ com.strangequark.musicplayer.EditPlaylistDialog$4
+com/strangequark/musicplayer/BuildConfig.java
+ com.strangequark.musicplayer.BuildConfig
+com/strangequark/musicplayer/fragments/adapters/SongListAdapter.java
+ com.strangequark.musicplayer.fragments.adapters.SongListAdapter
+com/strangequark/musicplayer/fragments/AlbumsFragment.java
+ com.strangequark.musicplayer.fragments.AlbumsFragment
+ com.strangequark.musicplayer.fragments.AlbumsFragment$1
+com/strangequark/musicplayer/PlaylistActivity.java
+ com.strangequark.musicplayer.PlaylistActivity
+ com.strangequark.musicplayer.PlaylistActivity$1
+ com.strangequark.musicplayer.PlaylistActivity$2
+ com.strangequark.musicplayer.PlaylistActivity$3
+ com.strangequark.musicplayer.PlaylistActivity$4
+ com.strangequark.musicplayer.PlaylistActivity$5
+com/strangequark/musicplayer/fragments/SongsFragment.java
+ com.strangequark.musicplayer.fragments.SongsFragment
+ com.strangequark.musicplayer.fragments.SongsFragment$1
+com/strangequark/musicplayer/AddSongDialog.java
+ com.strangequark.musicplayer.AddSongDialog
+ com.strangequark.musicplayer.AddSongDialog$1
+ com.strangequark.musicplayer.AddSongDialog$2
+ com.strangequark.musicplayer.AddSongDialog$3
+com/strangequark/musicplayer/MediaPlayerActivity.java
+ com.strangequark.musicplayer.MediaPlayerActivity
+ com.strangequark.musicplayer.MediaPlayerActivity$1
+ com.strangequark.musicplayer.MediaPlayerActivity$10
+ com.strangequark.musicplayer.MediaPlayerActivity$2
+ com.strangequark.musicplayer.MediaPlayerActivity$3
+ com.strangequark.musicplayer.MediaPlayerActivity$4
+ com.strangequark.musicplayer.MediaPlayerActivity$5
+ com.strangequark.musicplayer.MediaPlayerActivity$6
+ com.strangequark.musicplayer.MediaPlayerActivity$7
+ com.strangequark.musicplayer.MediaPlayerActivity$8
+ com.strangequark.musicplayer.MediaPlayerActivity$9
+ com.strangequark.musicplayer.MediaPlayerActivity$GestureListener
+com/strangequark/musicplayer/MyService.java
+ com.strangequark.musicplayer.MyService
+com/strangequark/musicplayer/MainActivity.java
+ com.strangequark.musicplayer.MainActivity
+ com.strangequark.musicplayer.MainActivity$1
+ com.strangequark.musicplayer.MainActivity$2
+ com.strangequark.musicplayer.MainActivity$3
+ com.strangequark.musicplayer.MainActivity$4
+com/strangequark/musicplayer/fragments/adapters/ViewPagerAdapter.java
+ com.strangequark.musicplayer.fragments.adapters.ViewPagerAdapter
+com/strangequark/musicplayer/fragments/ArtistsFragment.java
+ com.strangequark.musicplayer.fragments.ArtistsFragment
+ com.strangequark.musicplayer.fragments.ArtistsFragment$1
