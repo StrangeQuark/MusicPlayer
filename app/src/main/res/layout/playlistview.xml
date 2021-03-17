@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/addSongButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Add song"
+        android:backgroundTint="@color/design_default_color_primary"
+        android:textColor="@color/white"/>
+
+    <ListView
+        android:id="@+id/playlistListView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/editButton"
+        android:layout_below="@id/addSongButton"/>
+
+    <Button
+        android:id="@+id/editButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="Edit playlist"
+        android:backgroundTint="@color/design_default_color_primary"
+        android:textColor="@color/white"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/deletePlaylistButton"
+            android:layout_width="fill_parent"
+            android:layout_height="match_parent"
+            android:backgroundTint="@color/design_default_color_error"
+            android:textColor="@color/white"
+            android:layout_weight="1"
+            android:visibility="invisible"
+            android:text="Delete playlist"/>
+        <Button
+            android:id="@+id/finishEditButton"
+            android:layout_width="fill_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Finished"
+            android:visibility="invisible"
+            android:backgroundTint="@color/design_default_color_primary"
+            android:textColor="@color/white"/>
+    </LinearLayout>
+
+</RelativeLayout>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <ImageButton
+        android:id="@+id/pausePlayButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5mm"
+        android:layout_centerInParent="true"
+        android:cropToPadding="false"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:hapticFeedbackEnabled="true"
+        />
+
+    <ImageButton
+        android:id="@+id/nextButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5mm"
+        android:layout_marginLeft="3mm"
+        android:layout_toRightOf="@+id/pausePlayButton"
+        android:cropToPadding="false"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/nextbutton"
+        />
+
+    <ImageButton
+        android:id="@+id/shuffleButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5mm"
+        android:layout_marginLeft="3mm"
+        android:layout_toRightOf="@+id/nextButton"
+        android:cropToPadding="false"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/shuffleoff"
+        />
+
+    <ImageButton
+        android:id="@+id/previousButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5mm"
+        android:layout_marginRight="3mm"
+        android:layout_toLeftOf="@+id/pausePlayButton"
+        android:cropToPadding="false"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/previousbutton"
+        />
+
+    <ImageButton
+        android:id="@+id/repeatButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="5mm"
+        android:layout_marginRight="3mm"
+        android:layout_toLeftOf="@+id/previousButton"
+        android:cropToPadding="false"
+        android:scaleType="fitXY"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:hapticFeedbackEnabled="true"
+        android:src="@drawable/repeatoff"
+        />
+
+    <TextView
+        android:id="@+id/textClock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="2mm"
+        android:layout_marginBottom="17mm"
+        android:text=""/>
+
+    <TextView
+        android:id="@+id/textTotal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="2mm"
+        android:layout_marginBottom="17mm"
+        android:text=""/>
+
+    <SeekBar
+        android:id="@+id/seekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/pausePlayButton"
+        android:layout_marginBottom="37dp"/>
+
+    <ListView
+        android:id="@+id/songPlaying"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_above="@+id/seekBar"/>
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="9mm"
+        android:layout_above="@+id/seekBar"
+        android:src="@drawable/missing_album_art"/>
+
+</RelativeLayout>
