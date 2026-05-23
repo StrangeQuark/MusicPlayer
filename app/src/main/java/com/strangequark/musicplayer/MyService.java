@@ -31,23 +31,9 @@ public class MyService extends Service
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
 
-        MediaPlayerActivity.mNotificationManager.cancelAll();
-        MainActivity.wakeLock.release();
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
-        System.out.println("DEBUG-------------------------------------------------------------------------------------");
+        if(MediaPlayerActivity.mNotificationManager != null)
+            MediaPlayerActivity.mNotificationManager.cancelAll();
+        MainActivity.releaseWakeLock();
         this.stopSelf();
         int id = android.os.Process.myPid();
         android.os.Process.killProcess(id);

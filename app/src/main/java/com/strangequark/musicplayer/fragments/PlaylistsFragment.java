@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment;
 
 import com.strangequark.musicplayer.PlaylistActivity;
 import com.strangequark.musicplayer.PlaylistDialog;
+import com.strangequark.musicplayer.MainActivity;
 import com.strangequark.musicplayer.R;
 
 import java.io.BufferedReader;
@@ -29,12 +30,12 @@ import java.util.List;
 
 public class PlaylistsFragment extends Fragment {
 
+    private static final String PLAYLIST_VERSION = "#playlist-v2";
     PlaylistsFragment pf = this;
     Button newPlaylistButton;
     ListView playistListView;
 
-    private static Context context;
-    public static List<List> allPlaylists;
+    public static List<List<String>> allPlaylists;
     public static List<String> allPlaylistsNames;
     public static ArrayAdapter aa;
 
@@ -46,12 +47,6 @@ public class PlaylistsFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        PlaylistsFragment.context = pf.getContext();
-    }
-
-    public static Context getAppContext()
-    {
-        return PlaylistsFragment.context;
     }
 
     @Override
@@ -63,7 +58,7 @@ public class PlaylistsFragment extends Fragment {
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        allPlaylists = new ArrayList<List>();
+        allPlaylists = new ArrayList<List<String>>();
         allPlaylistsNames = new ArrayList<String>();
         newPlaylistButton = (Button)getView().findViewById(R.id.newPlaylistButton);
         playistListView = (ListView)getView().findViewById(R.id.playlists);
@@ -94,7 +89,7 @@ public class PlaylistsFragment extends Fragment {
 
     public void addPlaylist(String s)
     {
-        List<Integer> newPlaylist = new ArrayList<>();
+        List<String> newPlaylist = new ArrayList<String>();
 
         allPlaylists.add(newPlaylist);
         allPlaylistsNames.add(s);
@@ -102,14 +97,18 @@ public class PlaylistsFragment extends Fragment {
         aa.notifyDataSetChanged();
     }
 
-    public static void savePlaylists()
+    public static void savePlaylists(Context context)
     {
+        if(context == null)
+            return;
+
         try
         {
-            File file = new File(PlaylistsFragment.context.getFilesDir(), "playlists.txt");
-
-            FileOutputStream fos = new FileOutputStream(new File(PlaylistsFragment.context.getFilesDir(), "playlists.txt"));
+            Context appContext = context.getApplicationContext();
+            FileOutputStream fos = new FileOutputStream(new File(appContext.getFilesDir(), "playlists.txt"));
             FileWriter fw = new FileWriter(fos.getFD());
+
+            fw.write(PLAYLIST_VERSION + "\n");
 
             for (int i = 0; i < allPlaylists.size(); i++)
             {
@@ -117,7 +116,7 @@ public class PlaylistsFragment extends Fragment {
 
                 for (int j = 0; j < allPlaylists.get(i).size(); j++)
                 {
-                    fw.write(("," + allPlaylists.get(i).get(j)));
+                    fw.write("," + allPlaylists.get(i).get(j));
                 }
                 fw.write("\n");
             }
@@ -132,21 +131,33 @@ public class PlaylistsFragment extends Fragment {
 
     public void loadPlaylists()
     {
+        if(getContext() == null || aa == null)
+            return;
+
+        allPlaylists.clear();
+        allPlaylistsNames.clear();
+
         try
         {
-            File file = new File(PlaylistsFragment.context.getFilesDir(), "playlists.txt");
+            File file = new File(getContext().getApplicationContext().getFilesDir(), "playlists.txt");
+            if(!file.exists())
+            {
+                aa.notifyDataSetChanged();
+                return;
+            }
 
             BufferedReader reader = new BufferedReader(new FileReader(file));
 
-            int i = 0;
-
             String s = reader.readLine();
+            boolean isV2 = PLAYLIST_VERSION.equals(s);
+            boolean shouldSaveV2 = !isV2 && MainActivity.libraryLoaded;
+
+            if(isV2)
+                s = reader.readLine();
 
             while(s != null)
             {
-                System.out.println(s);
-
-                List<Integer> temp = new ArrayList<Integer>();
+                List<String> temp = new ArrayList<String>();
 
                 String[] strings = s.split(",");
 
@@ -154,16 +165,33 @@ public class PlaylistsFragment extends Fragment {
 
                 for(int j = 1; j < strings.length; j++)
                 {
-                    temp.add(Integer.valueOf(strings[j]));
+                    if(isV2)
+                    {
+                        temp.add(strings[j]);
+                    }
+                    else if(MainActivity.libraryLoaded)
+                    {
+                        try
+                        {
+                            String stableKey = MainActivity.getSongStableKey(Integer.valueOf(strings[j]));
+                            if(stableKey.length() > 0)
+                                temp.add(stableKey);
+                        }
+                        catch(NumberFormatException ex)
+                        {
+                        }
+                    }
                 }
 
                 allPlaylists.add(temp);
 
-                i++;
                 s = reader.readLine();
             }
 
             reader.close();
+
+            if(shouldSaveV2)
+                savePlaylists(getContext());
 
             aa.notifyDataSetChanged();
         }catch(Exception ex){ex.printStackTrace();}

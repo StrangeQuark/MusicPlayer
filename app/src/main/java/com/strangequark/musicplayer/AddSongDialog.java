@@ -60,11 +60,11 @@ public class AddSongDialog extends AppCompatDialogFragment {
                         for(int i = 0; i < playlist.size(); i++)
                         {
                             int current = playlist.get(i);
-
-                            pa.addSong(current, MainActivity.allSongs.get(current), MainActivity.allArtistsStrings.get(current), MainActivity.allSongsFiles.get(current).toString());
-
-                            PlaylistsFragment.savePlaylists();
+                            String stableKey = MainActivity.getSongStableKey(current);
+                            if(stableKey.length() > 0)
+                                pa.addSong(stableKey, MainActivity.allSongs.get(current), MainActivity.allArtistsStrings.get(current), MainActivity.allSongsFiles.get(current).toString());
                         }
+                        PlaylistsFragment.savePlaylists(getContext());
                     }
                 })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {

@@ -17,6 +17,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.util.LruCache;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -35,8 +36,12 @@ import com.strangequark.musicplayer.fragments.adapters.SongListAdapter;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MediaPlayerActivity extends Activity{
 
@@ -62,6 +67,21 @@ public class MediaPlayerActivity extends Activity{
     NotificationCompat.Builder mBuilder;
     static public NotificationManager mNotificationManager;
     static public Notification notification;
+    private static final int SEEK_UPDATE_DELAY_MS = 500;
+    private static final String[] ALBUM_ART_EXTENSIONS = new String[] {
+            "jpg",
+            "png",
+            "gif",
+            "jpeg"
+    };
+    private static final LruCache<String, Bitmap> ALBUM_ART_CACHE = new LruCache<String, Bitmap>((int) (Runtime.getRuntime().maxMemory() / 1024) / 8) {
+        @Override
+        protected int sizeOf(String key, Bitmap bitmap) {
+            return bitmap.getByteCount() / 1024;
+        }
+    };
+    private static final Set<String> MISSING_ALBUM_ART_DIRS = Collections.synchronizedSet(new HashSet<String>());
+    ExecutorService albumArtExecutor;
 
     private GestureDetector gdt;
 
@@ -70,6 +90,7 @@ public class MediaPlayerActivity extends Activity{
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.mediaplayerview);
+        albumArtExecutor = Executors.newSingleThreadExecutor();
 
         gdt = new GestureDetector(new GestureListener());
 
@@ -87,6 +108,12 @@ public class MediaPlayerActivity extends Activity{
 
         currentArtist = new ArrayList<String>();
         currentSong = new ArrayList<String>();
+        if(!hasPlayableState())
+        {
+            finish();
+            return;
+        }
+
         aa = new SongListAdapter(this, currentSong, currentArtist);
         aa2 = new SongListAdapter(this, MainActivity.currentPlaylistString, MainActivity.currentPlaylistArtistString);
         MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
@@ -101,6 +128,7 @@ public class MediaPlayerActivity extends Activity{
                     playButton.setImageResource(R.drawable.playbutton);
                     MainActivity.playButton.setImageResource(R.drawable.playbutton);
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(mpa.getApplicationContext());
                     MainActivity.mp.setOnCompletionListener(cl);
                     return;
                 }
@@ -111,7 +139,13 @@ public class MediaPlayerActivity extends Activity{
                     MainActivity.currentSongPosition++;
 
                     MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(MainActivity.currentSongPosition)));
+                    if(MainActivity.mp == null)
+                    {
+                        MainActivity.releaseWakeLock();
+                        return;
+                    }
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(mpa.getApplicationContext());
                     MainActivity.mp.setOnCompletionListener(cl);
 
                     playButton.setImageResource(R.drawable.playbutton);
@@ -132,7 +166,13 @@ public class MediaPlayerActivity extends Activity{
                         MainActivity.currentSongPosition = 0;
 
                         MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(MainActivity.currentSongPosition)));
+                        if(MainActivity.mp == null)
+                        {
+                            MainActivity.releaseWakeLock();
+                            return;
+                        }
                         MainActivity.mp.start();
+                        MainActivity.acquireWakeLock(mpa.getApplicationContext());
                         MainActivity.mp.setOnCompletionListener(cl);
 
                         playButton.setImageResource(R.drawable.playbutton);
@@ -147,6 +187,7 @@ public class MediaPlayerActivity extends Activity{
                     else {
                         MainActivity.mp.seekTo(0);
                         MainActivity.mp.pause();
+                        MainActivity.releaseWakeLock();
                         playButton.setImageResource(R.drawable.pausebutton);
                         MainActivity.playButton.setImageResource(R.drawable.pausebutton);
                         MainActivity.mp.setOnCompletionListener(cl);
@@ -192,14 +233,19 @@ public class MediaPlayerActivity extends Activity{
         {
             @Override
             public void onClick(View v) {
+                if(MainActivity.mp == null)
+                    return;
+
                 if(MainActivity.mp.isPlaying())
                 {
                     MainActivity.mp.pause();
+                    MainActivity.releaseWakeLock();
                     playButton.setImageResource(R.drawable.pausebutton);
                     MainActivity.playButton.setImageResource(R.drawable.pausebutton);
                 }
                 else {
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(mpa.getApplicationContext());
                     playButton.setImageResource(R.drawable.playbutton);
                     MainActivity.playButton.setImageResource(R.drawable.playbutton);
                 }
@@ -215,6 +261,9 @@ public class MediaPlayerActivity extends Activity{
             @Override
             public void onClick(View v)
             {
+                if(MainActivity.mp == null)
+                    return;
+
                 if(MainActivity.mp.getCurrentPosition() / 1000 >= 3)
                     MainActivity.mp.seekTo(0);
                 else
@@ -227,7 +276,13 @@ public class MediaPlayerActivity extends Activity{
                         MainActivity.currentSongPosition--;
 
                         MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(MainActivity.currentSongPosition)));
+                        if(MainActivity.mp == null)
+                        {
+                            MainActivity.releaseWakeLock();
+                            return;
+                        }
                         MainActivity.mp.start();
+                        MainActivity.acquireWakeLock(mpa.getApplicationContext());
                         MainActivity.mp.setOnCompletionListener(cl);
 
                         playButton.setImageResource(R.drawable.playbutton);
@@ -261,6 +316,9 @@ public class MediaPlayerActivity extends Activity{
             @Override
             public void onClick(View v)
             {
+                if(MainActivity.mp == null)
+                    return;
+
                 if(MainActivity.currentSongPosition < MainActivity.currentPlaylist.size() - 1)
                 {
                     MainActivity.mp.stop();
@@ -268,7 +326,13 @@ public class MediaPlayerActivity extends Activity{
 
                     MainActivity.currentSongPosition++;
                     MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(MainActivity.currentSongPosition)));
+                    if(MainActivity.mp == null)
+                    {
+                        MainActivity.releaseWakeLock();
+                        return;
+                    }
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(mpa.getApplicationContext());
                     MainActivity.mp.setOnCompletionListener(cl);
 
                     playButton.setImageResource(R.drawable.playbutton);
@@ -289,7 +353,13 @@ public class MediaPlayerActivity extends Activity{
                         MainActivity.currentSongPosition = 0;
 
                         MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(MainActivity.currentSongPosition)));
+                        if(MainActivity.mp == null)
+                        {
+                            MainActivity.releaseWakeLock();
+                            return;
+                        }
                         MainActivity.mp.start();
+                        MainActivity.acquireWakeLock(mpa.getApplicationContext());
                         MainActivity.mp.setOnCompletionListener(cl);
 
                         playButton.setImageResource(R.drawable.playbutton);
@@ -365,7 +435,11 @@ public class MediaPlayerActivity extends Activity{
                     MainActivity.currentPlaylist = new ArrayList<>(MainActivity.sortedFiles);
                     MainActivity.currentPlaylistString = new ArrayList<>(MainActivity.sortedStrings);
                     MainActivity.currentPlaylistArtistString = new ArrayList<>(MainActivity.sortedArtistStrings);
-                    MainActivity.currentSongPosition = MainActivity.currentPlaylistString.indexOf(MainActivity.currentSongString);
+                    MainActivity.currentSongPosition = MainActivity.findFilePosition(MainActivity.currentPlaylist, MainActivity.currentSongFile);
+                    if(MainActivity.currentSongPosition < 0)
+                        MainActivity.currentSongPosition = Math.min(MainActivity.sortedPosition, MainActivity.currentPlaylist.size() - 1);
+                    if(MainActivity.currentSongPosition >= 0 && MainActivity.currentSongPosition < MainActivity.currentPlaylistString.size())
+                        MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
 
                     if(listView.getAdapter() == aa2)
                     {
@@ -394,7 +468,8 @@ public class MediaPlayerActivity extends Activity{
 
         listView.setAdapter(aa);
 
-        MainActivity.liv.setAdapter(aa);
+        if(MainActivity.liv != null)
+            MainActivity.liv.setAdapter(aa);
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -416,7 +491,13 @@ public class MediaPlayerActivity extends Activity{
                             MainActivity.mp = null;
                         }
                         MainActivity.mp = MediaPlayer.create(mpa, Uri.fromFile(MainActivity.currentPlaylist.get(position)));
+                        if(MainActivity.mp == null)
+                        {
+                            MainActivity.releaseWakeLock();
+                            return;
+                        }
                         MainActivity.mp.start();
+                        MainActivity.acquireWakeLock(mpa.getApplicationContext());
                         MainActivity.mp.setOnCompletionListener(cl);
 
                         MainActivity.currentSongPosition = position;
@@ -477,24 +558,45 @@ public class MediaPlayerActivity extends Activity{
 
     private void updateSeekBar()
     {
-        seekBar.setProgress(MainActivity.mp.getCurrentPosition());
-        currentPosition = MainActivity.mp.getCurrentPosition() / 1000;
-        handler.postDelayed(r, 50);
+        if(handler == null || seekBar == null || MainActivity.mp == null)
+            return;
+
+        try
+        {
+            int position = MainActivity.mp.getCurrentPosition();
+            seekBar.setProgress(position);
+            currentPosition = position / 1000;
+            handler.postDelayed(r, SEEK_UPDATE_DELAY_MS);
+        }
+        catch(IllegalStateException ex)
+        {
+            MainActivity.releaseWakeLock();
+        }
     }
 
     private void updateSongTimersText()
     {
-        int time = MainActivity.mp.getDuration();
-        int seconds = (int) (time / 1000) % 60 ;
-        int minutes = (int) ((time / (1000*60)) % 60);
-        String secondsStr = String.format("%02d", seconds);
-        textTotal.setText(minutes + ":" + secondsStr);
+        if(MainActivity.mp == null)
+            return;
 
-        time = MainActivity.mp.getCurrentPosition();
-        seconds = (int) (time / 1000) % 60 ;
-        minutes = (int) ((time / (1000*60)) % 60);
-        secondsStr = String.format("%02d", seconds);
-        textClock.setText(minutes + ":" + secondsStr);
+        try
+        {
+            int time = MainActivity.mp.getDuration();
+            int seconds = (int) (time / 1000) % 60 ;
+            int minutes = (int) ((time / (1000*60)) % 60);
+            String secondsStr = String.format("%02d", seconds);
+            textTotal.setText(minutes + ":" + secondsStr);
+
+            time = MainActivity.mp.getCurrentPosition();
+            seconds = (int) (time / 1000) % 60 ;
+            minutes = (int) ((time / (1000*60)) % 60);
+            secondsStr = String.format("%02d", seconds);
+            textClock.setText(minutes + ":" + secondsStr);
+        }
+        catch(IllegalStateException ex)
+        {
+            MainActivity.releaseWakeLock();
+        }
     }
 
     //Notification
@@ -547,6 +649,9 @@ public class MediaPlayerActivity extends Activity{
 
     private void doShuffle()
     {
+        if(!hasPlayableState())
+            return;
+
         MainActivity.shuffleBoolean = true;
         shuffleButton.setImageResource(R.drawable.shuffleon);
 
@@ -590,29 +695,132 @@ public class MediaPlayerActivity extends Activity{
 
     private void updateAlbumImage(File f)
     {
-        String[] okFileExtensions = new String[] {
-                "jpg",
-                "png",
-                "gif",
-                "jpeg"
-        };
-
-        File[] filesList = f.getAbsoluteFile().getParentFile().listFiles();
-        for(File file : filesList)
+        if(albumArt == null || f == null || f.getAbsoluteFile().getParentFile() == null)
         {
-            for (String extension: okFileExtensions)
-            {
-                if (file.getName().toLowerCase().endsWith(extension))
-                {
-                    Bitmap myBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
-                    albumArt.setImageBitmap(myBitmap);
-                    return;
-                }
-                else {
-                    albumArt.setImageResource(R.drawable.missing_album_art);
-                }
-            }
+            if(albumArt != null)
+                albumArt.setImageResource(R.drawable.missing_album_art);
+            return;
         }
+
+        final File parent = f.getAbsoluteFile().getParentFile();
+        final String directoryPath = parent.getAbsolutePath();
+        final String requestedSongPath = f.getAbsolutePath();
+        Bitmap cached = ALBUM_ART_CACHE.get(directoryPath);
+        if(cached != null)
+        {
+            albumArt.setImageBitmap(cached);
+            return;
+        }
+
+        albumArt.setImageResource(R.drawable.missing_album_art);
+        if(MISSING_ALBUM_ART_DIRS.contains(directoryPath) || albumArtExecutor == null || albumArtExecutor.isShutdown())
+            return;
+
+        albumArtExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                Bitmap bitmap = null;
+                File[] filesList = parent.listFiles();
+                if(filesList != null)
+                {
+                    for(File file : filesList)
+                    {
+                        if(file != null && file.isFile() && isAlbumArtFile(file))
+                        {
+                            bitmap = decodeSampledBitmap(file.getAbsolutePath(), 512, 512);
+                            if(bitmap != null)
+                                break;
+                        }
+                    }
+                }
+
+                if(bitmap != null)
+                    ALBUM_ART_CACHE.put(directoryPath, bitmap);
+                else
+                    MISSING_ALBUM_ART_DIRS.add(directoryPath);
+
+                final Bitmap result = bitmap;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(isFinishing() || !isCurrentAlbumArtRequest(requestedSongPath))
+                            return;
+
+                        if(result != null)
+                            albumArt.setImageBitmap(result);
+                        else
+                            albumArt.setImageResource(R.drawable.missing_album_art);
+                    }
+                });
+            }
+        });
+    }
+
+    private boolean isAlbumArtFile(File file)
+    {
+        String name = file.getName().toLowerCase();
+        for(String extension : ALBUM_ART_EXTENSIONS)
+        {
+            if(name.endsWith("." + extension))
+                return true;
+        }
+        return false;
+    }
+
+    private boolean isCurrentAlbumArtRequest(String requestedSongPath)
+    {
+        return MainActivity.currentSongFile != null &&
+                requestedSongPath.equals(MainActivity.currentSongFile.getAbsolutePath());
+    }
+
+    private Bitmap decodeSampledBitmap(String path, int reqWidth, int reqHeight)
+    {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, options);
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(path, options);
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight)
+    {
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if(height > reqHeight || width > reqWidth)
+        {
+            int halfHeight = height / 2;
+            int halfWidth = width / 2;
+
+            while((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth)
+                inSampleSize *= 2;
+        }
+
+        return inSampleSize;
+    }
+
+    private boolean hasPlayableState()
+    {
+        return MainActivity.mp != null &&
+                MainActivity.currentPlaylist != null &&
+                MainActivity.currentPlaylistString != null &&
+                MainActivity.currentPlaylistArtistString != null &&
+                MainActivity.currentPlaylist.size() > 0 &&
+                MainActivity.currentPlaylistString.size() == MainActivity.currentPlaylist.size() &&
+                MainActivity.currentPlaylistArtistString.size() == MainActivity.currentPlaylist.size() &&
+                MainActivity.currentSongPosition >= 0 &&
+                MainActivity.currentSongPosition < MainActivity.currentPlaylist.size();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if(handler != null)
+            handler.removeCallbacksAndMessages(null);
+        if(albumArtExecutor != null)
+            albumArtExecutor.shutdownNow();
+        super.onDestroy();
     }
 
     @Override

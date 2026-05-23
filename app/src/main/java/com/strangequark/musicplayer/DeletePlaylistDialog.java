@@ -37,7 +37,7 @@ public class DeletePlaylistDialog extends AppCompatDialogFragment {
 
                         pa.finish();
 
-                        PlaylistsFragment.savePlaylists();
+                        PlaylistsFragment.savePlaylists(getContext());
                     }
                 })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {

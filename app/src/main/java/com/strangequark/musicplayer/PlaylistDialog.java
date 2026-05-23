@@ -46,7 +46,7 @@ public class PlaylistDialog extends AppCompatDialogFragment {
                     public void onClick(DialogInterface dialog, int which) {
                         String s = editText.getText().toString();
                         pf.addPlaylist(s);
-                        PlaylistsFragment.savePlaylists();
+                        PlaylistsFragment.savePlaylists(getContext());
                         //pf.loadPlaylists();
                     }
                 })
