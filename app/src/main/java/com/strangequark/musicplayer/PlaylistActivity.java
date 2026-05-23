@@ -37,7 +37,7 @@ public class PlaylistActivity extends FragmentActivity {
     List<String> songs;
     List<String> artists;
     ArrayAdapter aa;
-    List<Integer> currentPlaylist;
+    List<String> currentPlaylist;
     boolean isEditing = false;
 
     @Override
@@ -54,7 +54,7 @@ public class PlaylistActivity extends FragmentActivity {
         files = new ArrayList<File>();
         songs = new ArrayList<String>();
         artists = new ArrayList<String>();
-        currentPlaylist = new ArrayList<Integer>();
+        currentPlaylist = new ArrayList<String>();
 
         aa = new SongListAdapter(this, songs, artists);
 
@@ -122,10 +122,12 @@ public class PlaylistActivity extends FragmentActivity {
                         MainActivity.mp = null;
                     }
                     MainActivity.mp = MediaPlayer.create(pa.getApplicationContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
+                    if(MainActivity.mp == null)
+                        return;
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(pa.getApplicationContext());
 
                     MainActivity.currentSongPosition = position;
-                    MainActivity.currentPlaylistArtistString.add(MainActivity.allArtistsStrings.get(position));
 
                     MainActivity.playButton.setImageResource(R.drawable.playbutton);
 
@@ -140,28 +142,37 @@ public class PlaylistActivity extends FragmentActivity {
         loadSongs();
     }
 
-    public void addSong(int pos, String title, String artist, String data)
+    public void addSong(String stableKey, String title, String artist, String data)
     {
-        PlaylistsFragment.allPlaylists.get(currentIndex).add(pos);
+        PlaylistsFragment.allPlaylists.get(currentIndex).add(stableKey);
         songs.add(title);
         artists.add(artist);
         files.add(new File(data));
 
-        loadSongs();
+        aa.notifyDataSetChanged();
     }
 
     public void loadSongs()
     {
+        songs.clear();
+        artists.clear();
+        files.clear();
+
+        if(PlaylistsFragment.allPlaylists == null || currentIndex < 0 || currentIndex >= PlaylistsFragment.allPlaylists.size())
+        {
+            aa.notifyDataSetChanged();
+            return;
+        }
+
         currentPlaylist = PlaylistsFragment.allPlaylists.get(currentIndex);
-        System.out.println("Playlist size: " + currentPlaylist.size());
         for(int i = 0; i < currentPlaylist.size(); i++)
         {
-            System.out.println("Current index: " + currentPlaylist.get(i));
-            if(!songs.contains(MainActivity.allSongs.get(currentPlaylist.get(i))))
+            Song song = MainActivity.getSongByStableKey(currentPlaylist.get(i));
+            if(song != null)
             {
-                songs.add(MainActivity.allSongs.get(currentPlaylist.get(i)));
-                artists.add(MainActivity.allArtistsStrings.get(currentPlaylist.get(i)));
-                files.add(MainActivity.allSongsFiles.get(currentPlaylist.get(i)));
+                songs.add(song.title);
+                artists.add(song.getArtistDurationText());
+                files.add(song.getFile());
             }
         }
 

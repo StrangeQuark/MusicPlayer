@@ -19,6 +19,7 @@ import androidx.fragment.app.Fragment;
 import com.strangequark.musicplayer.MainActivity;
 import com.strangequark.musicplayer.MediaPlayerActivity;
 import com.strangequark.musicplayer.R;
+import com.strangequark.musicplayer.Song;
 import com.strangequark.musicplayer.fragments.adapters.SongListAdapter;
 
 import java.io.File;
@@ -35,6 +36,8 @@ public class ArtistsFragment extends Fragment {
     Boolean b = false;
     String currentArtist;
     int currentArtistPosition;
+    List<String> artists;
+    List<String> albums;
     List<File> tempPlaylist;
     List<String> tempPlaylistString;
     List<String> tempPlaylistArtistString;
@@ -66,47 +69,30 @@ public class ArtistsFragment extends Fragment {
     {
         lv = (ListView)getView().findViewById(R.id.artistsList);
 
-        String[] projection = {
-                MediaStore.Audio.Artists.ARTIST,
-                MediaStore.Audio.Artists.Albums.ALBUM
-        };
-
-        Cursor cursor = getActivity().managedQuery(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                null,
-                null,
-                MediaStore.Audio.Artists.DEFAULT_SORT_ORDER);
-
-        List<String> artists = new ArrayList<String>();
-        List<String> artistsAndAlbums = new ArrayList<String>();
-        List<String> albums = new ArrayList<String>();
-
-        while(cursor.moveToNext()){
-            if(!artists.contains(cursor.getString(0)))
-                artists.add(cursor.getString(0));
-            if(!artistsAndAlbums.contains(cursor.getString(0) + " - " + cursor.getString(1))) {
-                artistsAndAlbums.add(cursor.getString(0) + " - " + cursor.getString(1));
-                albums.add(cursor.getString(1));
-            }
-        }
+        artists = new ArrayList<String>();
+        albums = new ArrayList<String>();
 
         aa = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, artists);
 
         lv.setAdapter(aa);
+        refreshArtists();
 
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if(lv.getAdapter() == aa)
                 {
+                    if(position < 0 || position >= artists.size())
+                        return;
+
                     List<String> temp = new ArrayList<String>();
                     temp.add("All songs");
 
                     currentArtist = artists.get(position);
-                    for (int i = 0; i < artistsAndAlbums.size(); i++) {
-                        if (artistsAndAlbums.get(i).contains(artists.get(position)))
-                            temp.add(albums.get(i));
+                    for (int i = 0; i < MainActivity.allSongModels.size(); i++) {
+                        Song song = MainActivity.allSongModels.get(i);
+                        if (song.artist.equals(currentArtist) && !temp.contains(song.album))
+                            temp.add(song.album);
                     }
                     aa2 = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, temp);
                     lv.setAdapter(aa2);
@@ -122,20 +108,22 @@ public class ArtistsFragment extends Fragment {
                     tempPlaylistArtistString = new ArrayList<String>();
                     tempPlaylistTrackNumber = new ArrayList<Integer>();
 
+                    String selectedAlbum = lv.getItemAtPosition(position).toString();
                     for(int i = 0; i < MainActivity.songsAlbumsAndArtists.size(); i++)
                     {
-                        if(MainActivity.songsAlbumsAndArtists.get(i).contains(lv.getItemAtPosition(position).toString()) && MainActivity.songsAlbumsAndArtists.get(i).contains(currentArtist) && MainActivity.allAlbumsStrings.get(i).equals(lv.getItemAtPosition(position).toString()))
+                        Song song = MainActivity.allSongModels.get(i);
+                        if(!selectedAlbum.equals("All songs") && song.artist.equals(currentArtist) && song.album.equals(selectedAlbum))
                         {
-                            tempPlaylistString.add(MainActivity.allSongs.get(i));
-                            tempPlaylistArtistString.add(MainActivity.allArtistsStrings.get(i));
-                            tempPlaylist.add(MainActivity.allSongsFiles.get(i));
-                            tempPlaylistTrackNumber.add(MainActivity.allSongsTrackNumbers.get(i));
+                            tempPlaylistString.add(song.title);
+                            tempPlaylistArtistString.add(song.getArtistDurationText());
+                            tempPlaylist.add(song.getFile());
+                            tempPlaylistTrackNumber.add(song.trackNumber);
                         }
-                        if(lv.getItemAtPosition(position).toString().equals("All songs") && MainActivity.albumsAndArtists.get(i).contains(currentArtist))
+                        if(selectedAlbum.equals("All songs") && song.artist.equals(currentArtist))
                         {
-                            tempPlaylistString.add(MainActivity.allSongs.get(i));
-                            tempPlaylistArtistString.add(MainActivity.allArtistsStrings.get(i));
-                            tempPlaylist.add(MainActivity.allSongsFiles.get(i));
+                            tempPlaylistString.add(song.title);
+                            tempPlaylistArtistString.add(song.getArtistDurationText());
+                            tempPlaylist.add(song.getFile());
                             tempPlaylistTrackNumber.add(i);
                         }
                     }
@@ -161,10 +149,14 @@ public class ArtistsFragment extends Fragment {
                         MainActivity.mp = null;
                     }
                     MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
+                    if(MainActivity.mp == null)
+                        return;
                     MainActivity.mp.start();
+                    MainActivity.acquireWakeLock(getContext());
 
                     MainActivity.currentSongPosition = position;
-                    MainActivity.currentPlaylistArtistString.add(MainActivity.allArtistsStrings.get(position));
+                    MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
+                    MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
 
                     MainActivity.playButton.setImageResource(R.drawable.playbutton);
 
@@ -187,5 +179,23 @@ public class ArtistsFragment extends Fragment {
             lv.setAdapter(aa2);
             return;
         }
+    }
+
+    public void refreshArtists()
+    {
+        if(artists == null || aa == null)
+            return;
+
+        artists.clear();
+        albums.clear();
+        for(int i = 0; i < MainActivity.allSongModels.size(); i++)
+        {
+            Song song = MainActivity.allSongModels.get(i);
+            if(!artists.contains(song.artist))
+                artists.add(song.artist);
+            if(!albums.contains(song.album))
+                albums.add(song.album);
+        }
+        aa.notifyDataSetChanged();
     }
 }

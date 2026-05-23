@@ -31,6 +31,11 @@ import java.util.Random;
 
 public class SongsFragment extends Fragment {
 
+    ListView lv;
+    List<String> tempSongs;
+    List<String> tempArtists;
+    ArrayAdapter aa;
+
     public SongsFragment() {
         // Required empty public constructor
     }
@@ -50,26 +55,31 @@ public class SongsFragment extends Fragment {
 
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState)
     {
-        ListView lv = (ListView)getView().findViewById(R.id.songsList);
+        lv = (ListView)getView().findViewById(R.id.songsList);
 
-        List<String> tempSongs = new ArrayList<String>(MainActivity.allSongs);
-        List<String> tempArtists = new ArrayList<String>(MainActivity.allArtistsStrings);
+        tempSongs = new ArrayList<String>();
+        tempArtists = new ArrayList<String>();
 
-        tempSongs.add(0, "Shuffle all");
-        tempArtists.add(0, "");
-
-        ArrayAdapter aa = new SongListAdapter(getActivity(), tempSongs, tempArtists);
+        aa = new SongListAdapter(getActivity(), tempSongs, tempArtists);
 
         lv.setAdapter(aa);
+        refreshSongs();
 
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if(MainActivity.allSongsFiles == null || MainActivity.allSongsFiles.size() == 0)
+                    return;
+
                 if(position == 0)
                 {
                     Random r = new Random();
-                    position = r.nextInt(tempSongs.size()) + 1;
+                    position = r.nextInt(MainActivity.allSongsFiles.size());
                     MainActivity.shuffleBoolean = true;
+                }
+                else
+                {
+                    position = position - 1;
                 }
 
                 if(MainActivity.mp != null)
@@ -78,14 +88,19 @@ public class SongsFragment extends Fragment {
                     MainActivity.mp.release();
                     MainActivity.mp = null;
                 }
-                MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.allSongsFiles.get(position-1)));
+                MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.allSongsFiles.get(position)));
+                if(MainActivity.mp == null)
+                    return;
                 MainActivity.mp.start();
+                MainActivity.acquireWakeLock(getContext());
 
-                MainActivity.currentSongPosition = position-1;
+                MainActivity.currentSongPosition = position;
 
                 MainActivity.currentPlaylist = new ArrayList<>(MainActivity.allSongsFiles);
                 MainActivity.currentPlaylistString = new ArrayList<>(MainActivity.allSongs);
                 MainActivity.currentPlaylistArtistString = new ArrayList<>(MainActivity.allArtistsStrings);
+                MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
+                MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
 
                 MainActivity.playButton.setImageResource(R.drawable.playbutton);
 
@@ -93,5 +108,19 @@ public class SongsFragment extends Fragment {
                 startActivity(appInfo);
             }
         });
+    }
+
+    public void refreshSongs()
+    {
+        if(tempSongs == null || tempArtists == null || aa == null)
+            return;
+
+        tempSongs.clear();
+        tempArtists.clear();
+        tempSongs.add("Shuffle all");
+        tempArtists.add("");
+        tempSongs.addAll(MainActivity.allSongs);
+        tempArtists.addAll(MainActivity.allArtistsStrings);
+        aa.notifyDataSetChanged();
     }
 }

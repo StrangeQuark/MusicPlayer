@@ -106,7 +106,7 @@ public class EditPlaylistDialog extends AppCompatDialogFragment {
                             File f = pa.files.get(position);
                             String s1 = pa.songs.get(position);
                             String s2 = pa.artists.get(position);
-                            int j = pa.currentPlaylist.get(position);
+                            String stableKey = pa.currentPlaylist.get(position);
 
                             pa.files.remove(position);
                             pa.songs.remove(position);
@@ -116,12 +116,12 @@ public class EditPlaylistDialog extends AppCompatDialogFragment {
                             pa.files.add(current, f);
                             pa.songs.add(current, s1);
                             pa.artists.add(current, s2);
-                            pa.currentPlaylist.add(current, j);
+                            pa.currentPlaylist.add(current, stableKey);
 
                             pa.aa.notifyDataSetChanged();
                         }
 
-                        PlaylistsFragment.savePlaylists();
+                        PlaylistsFragment.savePlaylists(getContext());
                     }
                 })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
