@@ -2,8 +2,6 @@ package com.strangequark.musicplayer.fragments;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -24,6 +22,7 @@ import com.strangequark.musicplayer.fragments.adapters.SongListAdapter;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
 
@@ -94,6 +93,7 @@ public class ArtistsFragment extends Fragment {
                         if (song.artist.equals(currentArtist) && !temp.contains(song.album))
                             temp.add(song.album);
                     }
+                    Collections.sort(temp.subList(1, temp.size()), String.CASE_INSENSITIVE_ORDER);
                     aa2 = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, temp);
                     lv.setAdapter(aa2);
                     b = true;
@@ -142,23 +142,9 @@ public class ArtistsFragment extends Fragment {
                     MainActivity.currentPlaylistString = new ArrayList<String>(tempPlaylistString);
                     MainActivity.currentPlaylistArtistString = new ArrayList<String>(tempPlaylistArtistString);
 
-                    if(MainActivity.mp != null)
-                    {
-                        MainActivity.mp.stop();
-                        MainActivity.mp.release();
-                        MainActivity.mp = null;
-                    }
-                    MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
-                    if(MainActivity.mp == null)
-                        return;
-                    MainActivity.mp.start();
-                    MainActivity.acquireWakeLock(getContext());
-
                     MainActivity.currentSongPosition = position;
-                    MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
-                    MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
-
-                    MainActivity.playButton.setImageResource(R.drawable.playbutton);
+                    if(!MainActivity.playTrackAt(getContext(), position))
+                        return;
 
                     Intent appInfo = new Intent(getActivity(), MediaPlayerActivity.class);
                     startActivity(appInfo);
@@ -196,6 +182,9 @@ public class ArtistsFragment extends Fragment {
             if(!albums.contains(song.album))
                 albums.add(song.album);
         }
+
+        Collections.sort(artists, String.CASE_INSENSITIVE_ORDER);
+        Collections.sort(albums, String.CASE_INSENSITIVE_ORDER);
         aa.notifyDataSetChanged();
     }
 }

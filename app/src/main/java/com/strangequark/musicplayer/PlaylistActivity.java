@@ -4,8 +4,6 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
@@ -116,20 +114,9 @@ public class PlaylistActivity extends FragmentActivity {
                     MainActivity.currentPlaylist = new ArrayList<File>(files);
                     MainActivity.currentPlaylistString = new ArrayList<String>(songs);
                     MainActivity.currentPlaylistArtistString = new ArrayList<String>(artists);
-                    if (MainActivity.mp != null) {
-                        MainActivity.mp.stop();
-                        MainActivity.mp.release();
-                        MainActivity.mp = null;
-                    }
-                    MainActivity.mp = MediaPlayer.create(pa.getApplicationContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
-                    if(MainActivity.mp == null)
-                        return;
-                    MainActivity.mp.start();
-                    MainActivity.acquireWakeLock(pa.getApplicationContext());
-
                     MainActivity.currentSongPosition = position;
-
-                    MainActivity.playButton.setImageResource(R.drawable.playbutton);
+                    if(!MainActivity.playTrackAt(pa.getApplicationContext(), position))
+                        return;
 
                     Intent appInfo = new Intent(pa, MediaPlayerActivity.class);
                     startActivity(appInfo);

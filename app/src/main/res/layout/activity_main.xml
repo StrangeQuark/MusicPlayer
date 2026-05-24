@@ -49,7 +49,7 @@
                 android:layout_height="9mm"
                 android:id="@+id/currList"
                 android:layout_alignParentBottom="true"
-                android:background="@color/white"
+                android:background="@color/bottom_panel_surface"
                 android:scrollbars="none"/>
 
         </LinearLayout>
@@ -65,7 +65,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="9mm"
                 android:src="@drawable/playbutton"
-                android:background="@color/white"/>
+                android:background="@color/bottom_panel_surface"/>
         </LinearLayout>
 
     </LinearLayout>

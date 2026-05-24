@@ -2,8 +2,6 @@ package com.strangequark.musicplayer.fragments;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -123,23 +121,9 @@ public class AlbumsFragment extends Fragment {
                     MainActivity.currentPlaylistString = new ArrayList<String>(tempPlaylistString);
                     MainActivity.currentPlaylistArtistString = new ArrayList<String>(tempPlaylistArtistString);
                     MainActivity.currentPlaylistTrackNumbers = new ArrayList<Integer>(tempPlaylistTrackNumber);
-                    if(MainActivity.mp != null)
-                    {
-                        MainActivity.mp.stop();
-                        MainActivity.mp.release();
-                        MainActivity.mp = null;
-                    }
-                    MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
-                    if(MainActivity.mp == null)
-                        return;
-                    MainActivity.mp.start();
-                    MainActivity.acquireWakeLock(getContext());
-
                     MainActivity.currentSongPosition = position;
-                    MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
-                    MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
-
-                    MainActivity.playButton.setImageResource(R.drawable.playbutton);
+                    if(!MainActivity.playTrackAt(getContext(), position))
+                        return;
 
                     Intent appInfo = new Intent(getActivity(), MediaPlayerActivity.class);
                     startActivity(appInfo);
@@ -174,6 +158,33 @@ public class AlbumsFragment extends Fragment {
                 artists.add(song.artist);
             }
         }
+
+        List<Integer> indices = new ArrayList<Integer>();
+        for(int i = 0; i < albums.size(); i++)
+            indices.add(i);
+
+        Collections.sort(indices, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer left, Integer right) {
+                int albumCompare = albums.get(left).compareToIgnoreCase(albums.get(right));
+                if(albumCompare != 0)
+                    return albumCompare;
+                return artists.get(left).compareToIgnoreCase(artists.get(right));
+            }
+        });
+
+        List<String> sortedAlbums = new ArrayList<String>();
+        List<String> sortedArtists = new ArrayList<String>();
+        for(Integer index : indices)
+        {
+            sortedAlbums.add(albums.get(index));
+            sortedArtists.add(artists.get(index));
+        }
+
+        albums.clear();
+        albums.addAll(sortedAlbums);
+        artists.clear();
+        artists.addAll(sortedArtists);
         aa.notifyDataSetChanged();
     }
 }
