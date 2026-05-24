@@ -46,9 +46,10 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MainActivity extends AppCompatActivity implements AudioManager.OnAudioFocusChangeListener
+public class MainActivity extends AppCompatActivity
 {
     static public MediaPlayer mp;
+    static public MediaPlayer nextMp;
     static public List<File> allSongsFiles;
     static public List<Song> allSongModels;
     static public List<Long> allSongIds;
@@ -81,6 +82,24 @@ public class MainActivity extends AppCompatActivity implements AudioManager.OnAu
     static public Map<String, Song> songsByPath;
     static public boolean libraryLoaded = false;
     static public boolean libraryLoading = false;
+    static private AudioManager sharedAudioManager;
+    static private int nextSongPosition = -1;
+    static private File nextSongFile;
+    static private MediaPlayer.OnCompletionListener playbackCompletionListener;
+    static private final AudioManager.OnAudioFocusChangeListener AUDIO_FOCUS_LISTENER = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            if(mp == null)
+                return;
+
+            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                    focusChange == AudioManager.AUDIOFOCUS_LOSS)
+            {
+                if (mp.isPlaying())
+                    pausePlayback();
+            }
+        }
+    };
     PlaylistsFragment playlistsFragment;
     ArtistsFragment artistsFragment;
     AlbumsFragment albumsFragment;
@@ -94,14 +113,10 @@ public class MainActivity extends AppCompatActivity implements AudioManager.OnAu
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         audioManager = (AudioManager)getSystemService(AUDIO_SERVICE);
-        int result = audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if(result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
-        {
-            System.out.println("ERROR IN REQUESTING AUDIO MANAGER");
-            finish();
-        }
+        sharedAudioManager = audioManager;
 
         button = (Button)findViewById(R.id.permissionsButton);
         button.setVisibility(View.INVISIBLE);
@@ -124,17 +139,9 @@ public class MainActivity extends AppCompatActivity implements AudioManager.OnAu
                 {
                     if (mp.isPlaying())
                     {
-                        mp.pause();
-                        releaseWakeLock();
-                        playButton.setImageResource(R.drawable.pausebutton);
-                        if(MediaPlayerActivity.playButton != null)
-                            MediaPlayerActivity.playButton.setImageResource(R.drawable.pausebutton);
+                        pausePlayback();
                     } else {
-                        mp.start();
-                        acquireWakeLock(ma.getApplicationContext());
-                        playButton.setImageResource(R.drawable.playbutton);
-                        if(MediaPlayerActivity.playButton != null)
-                            MediaPlayerActivity.playButton.setImageResource(R.drawable.playbutton);
+                        startPlayback(ma.getApplicationContext());
                     }
                 }
             }
@@ -474,6 +481,304 @@ public class MainActivity extends AppCompatActivity implements AudioManager.OnAu
         return -1;
     }
 
+    public static void setPlaybackCompletionListener(MediaPlayer.OnCompletionListener listener)
+    {
+        playbackCompletionListener = listener;
+        if(mp != null)
+            mp.setOnCompletionListener(listener);
+        if(nextMp != null)
+            nextMp.setOnCompletionListener(listener);
+    }
+
+    public static boolean playTrackAt(Context context, int position)
+    {
+        Context playbackContext = getPlaybackContext(context);
+        if(playbackContext == null || !hasPlaylistPosition(position))
+            return false;
+
+        releasePreloadedTrack();
+        releaseCurrentPlayer();
+        currentSongPosition = position;
+        updateCurrentTrackMetadata();
+
+        mp = MediaPlayer.create(playbackContext, Uri.fromFile(currentSongFile));
+        if(mp == null)
+        {
+            releaseWakeLock();
+            return false;
+        }
+        if(playbackCompletionListener != null)
+            mp.setOnCompletionListener(playbackCompletionListener);
+
+        return startPlayback(playbackContext);
+    }
+
+    public static boolean playNextTrack(Context context)
+    {
+        int position = getNextPlaybackPosition();
+        if(position < 0)
+            return false;
+
+        if(isPreloadedTrack(position))
+            return playPreloadedTrack(context, position);
+
+        return playTrackAt(context, position);
+    }
+
+    public static boolean promotePreloadedTrack(Context context, MediaPlayer completedPlayer)
+    {
+        Context playbackContext = getPlaybackContext(context);
+        if(playbackContext == null || nextMp == null || nextSongPosition < 0)
+            return false;
+
+        MediaPlayer oldPlayer = completedPlayer != null ? completedPlayer : mp;
+        MediaPlayer promotedPlayer = nextMp;
+        int promotedPosition = nextSongPosition;
+
+        nextMp = null;
+        nextSongPosition = -1;
+        nextSongFile = null;
+
+        if(oldPlayer != null && oldPlayer != promotedPlayer)
+            releasePlayer(oldPlayer, false);
+
+        mp = promotedPlayer;
+        currentSongPosition = promotedPosition;
+        updateCurrentTrackMetadata();
+        if(playbackCompletionListener != null)
+            mp.setOnCompletionListener(playbackCompletionListener);
+
+        try
+        {
+            if(!mp.isPlaying())
+                mp.start();
+        }
+        catch(IllegalStateException ex)
+        {
+            releaseWakeLock();
+            return false;
+        }
+
+        acquireWakeLock(playbackContext);
+        updatePlaybackButtons(true);
+        preloadNextTrack(playbackContext);
+        MediaPlayerActivity.refreshNotificationOnly(playbackContext);
+        return true;
+    }
+
+    public static int getNextPlaybackPosition()
+    {
+        if(repeatOneBoolean || currentPlaylist == null || currentPlaylist.size() == 0 ||
+                currentSongPosition < 0 || currentSongPosition >= currentPlaylist.size())
+            return -1;
+
+        if(currentSongPosition < currentPlaylist.size() - 1)
+            return currentSongPosition + 1;
+
+        if(repeatAllBoolean)
+            return 0;
+
+        return -1;
+    }
+
+    public static void preloadNextTrack(Context context)
+    {
+        Context playbackContext = getPlaybackContext(context);
+        if(playbackContext == null || mp == null)
+        {
+            releasePreloadedTrack();
+            return;
+        }
+
+        int position = getNextPlaybackPosition();
+        if(position < 0)
+        {
+            releasePreloadedTrack();
+            return;
+        }
+
+        if(isPreloadedTrack(position))
+        {
+            attachPreloadedTrack();
+            return;
+        }
+
+        releasePreloadedTrack();
+        if(!hasPlaylistPosition(position))
+            return;
+
+        MediaPlayer player = MediaPlayer.create(playbackContext, Uri.fromFile(currentPlaylist.get(position)));
+        if(player == null)
+            return;
+
+        if(playbackCompletionListener != null)
+            player.setOnCompletionListener(playbackCompletionListener);
+
+        nextMp = player;
+        nextSongPosition = position;
+        nextSongFile = currentPlaylist.get(position);
+        attachPreloadedTrack();
+    }
+
+    public static void releasePreloadedTrack()
+    {
+        detachPreloadedTrack();
+        if(nextMp != null)
+            releasePlayer(nextMp, false);
+        nextMp = null;
+        nextSongPosition = -1;
+        nextSongFile = null;
+    }
+
+    private static boolean playPreloadedTrack(Context context, int position)
+    {
+        Context playbackContext = getPlaybackContext(context);
+        if(playbackContext == null || nextMp == null)
+            return false;
+
+        MediaPlayer oldPlayer = mp;
+        MediaPlayer promotedPlayer = nextMp;
+        nextMp = null;
+        nextSongPosition = -1;
+        nextSongFile = null;
+
+        detachPreloadedTrack(oldPlayer);
+        if(oldPlayer != null)
+            releasePlayer(oldPlayer, true);
+
+        mp = promotedPlayer;
+        currentSongPosition = position;
+        updateCurrentTrackMetadata();
+        if(playbackCompletionListener != null)
+            mp.setOnCompletionListener(playbackCompletionListener);
+
+        return startPlayback(playbackContext);
+    }
+
+    private static void updateCurrentTrackMetadata()
+    {
+        if(!hasPlaylistPosition(currentSongPosition))
+            return;
+
+        currentSongFile = currentPlaylist.get(currentSongPosition);
+        currentSongString = currentPlaylistString.get(currentSongPosition);
+        currentArtistString = currentPlaylistArtistString.get(currentSongPosition);
+    }
+
+    private static boolean hasPlaylistPosition(int position)
+    {
+        return currentPlaylist != null &&
+                currentPlaylistString != null &&
+                currentPlaylistArtistString != null &&
+                currentPlaylist.size() > 0 &&
+                currentPlaylistString.size() == currentPlaylist.size() &&
+                currentPlaylistArtistString.size() == currentPlaylist.size() &&
+                position >= 0 &&
+                position < currentPlaylist.size();
+    }
+
+    private static boolean isPreloadedTrack(int position)
+    {
+        if(nextMp == null || nextSongFile == null || !hasPlaylistPosition(position) ||
+                nextSongPosition != position)
+            return false;
+
+        File requestedFile = currentPlaylist.get(position);
+        return requestedFile != null &&
+                requestedFile.getAbsolutePath().equals(nextSongFile.getAbsolutePath());
+    }
+
+    private static void attachPreloadedTrack()
+    {
+        if(mp == null || nextMp == null)
+            return;
+
+        try
+        {
+            mp.setNextMediaPlayer(nextMp);
+        }
+        catch(IllegalStateException ex)
+        {
+            releasePreloadedTrack();
+        }
+        catch(IllegalArgumentException ex)
+        {
+            releasePreloadedTrack();
+        }
+    }
+
+    private static void detachPreloadedTrack()
+    {
+        detachPreloadedTrack(mp);
+    }
+
+    private static void detachPreloadedTrack(MediaPlayer player)
+    {
+        if(player == null)
+            return;
+
+        try
+        {
+            player.setNextMediaPlayer(null);
+        }
+        catch(IllegalStateException ex)
+        {
+            // The player may already be completed or released; the preload is still safe to release.
+        }
+        catch(IllegalArgumentException ex)
+        {
+            // Some platform implementations reject clearing here after completion.
+        }
+    }
+
+    private static void releaseCurrentPlayer()
+    {
+        if(mp != null)
+            releasePlayer(mp, true);
+        mp = null;
+    }
+
+    private static void releasePlayer(MediaPlayer player, boolean stopFirst)
+    {
+        if(player == null)
+            return;
+
+        try
+        {
+            player.setOnCompletionListener(null);
+            player.setNextMediaPlayer(null);
+        }
+        catch(IllegalStateException ex)
+        {
+            // Continue releasing below.
+        }
+        catch(IllegalArgumentException ex)
+        {
+            // Continue releasing below.
+        }
+
+        if(stopFirst)
+        {
+            try
+            {
+                player.stop();
+            }
+            catch(IllegalStateException ex)
+            {
+                // Already stopped or completed.
+            }
+        }
+
+        player.release();
+    }
+
+    private static Context getPlaybackContext(Context context)
+    {
+        if(context == null)
+            return null;
+        return context.getApplicationContext();
+    }
+
     public static void acquireWakeLock(Context context)
     {
         try
@@ -509,29 +814,70 @@ public class MainActivity extends AppCompatActivity implements AudioManager.OnAu
         }
     }
 
-    @Override
-    public void onAudioFocusChange(int focusChange) {
-        if(MainActivity.mp != null)
-        {
-            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
-            {
-                if (MainActivity.mp.isPlaying() && playButton != null)
-                    playButton.performClick();
-            }
-            else if (focusChange == AudioManager.AUDIOFOCUS_GAIN)
-            {
-            }
-            else if (focusChange == AudioManager.AUDIOFOCUS_LOSS)
-            {
-                if (MainActivity.mp.isPlaying() && playButton != null)
-                    playButton.performClick();
-            }
-        }
+    public static boolean requestPlaybackFocus()
+    {
+        if(sharedAudioManager == null)
+            return false;
+
+        int result = sharedAudioManager.requestAudioFocus(
+                AUDIO_FOCUS_LISTENER,
+                AudioManager.STREAM_MUSIC,
+                AudioManager.AUDIOFOCUS_GAIN);
+        return result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+    }
+
+    public static boolean startPlayback(Context context)
+    {
+        if(mp == null)
+            return false;
+
+        if(sharedAudioManager == null && context != null)
+            sharedAudioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+
+        if(!requestPlaybackFocus())
+            return false;
+
+        mp.start();
+        acquireWakeLock(context);
+        updatePlaybackButtons(true);
+        preloadNextTrack(context);
+        MediaPlayerActivity.refreshNotificationOnly(context);
+        return true;
+    }
+
+    public static void abandonPlaybackFocus()
+    {
+        if(sharedAudioManager != null)
+            sharedAudioManager.abandonAudioFocus(AUDIO_FOCUS_LISTENER);
+    }
+
+    public static void pausePlayback()
+    {
+        if(mp == null)
+            return;
+
+        if(mp.isPlaying())
+            mp.pause();
+        abandonPlaybackFocus();
+        releaseWakeLock();
+        updatePlaybackButtons(false);
+        if(playButton != null)
+            MediaPlayerActivity.refreshNotificationOnly(playButton.getContext());
+    }
+
+    public static void updatePlaybackButtons(boolean playing)
+    {
+        int icon = playing ? R.drawable.playbutton : R.drawable.pausebutton;
+        if(playButton != null)
+            playButton.setImageResource(icon);
+        if(MediaPlayerActivity.playButton != null)
+            MediaPlayerActivity.playButton.setImageResource(icon);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        abandonPlaybackFocus();
         if(libraryExecutor != null)
             libraryExecutor.shutdownNow();
     }

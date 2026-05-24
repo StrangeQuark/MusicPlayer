@@ -18,12 +18,13 @@
             android:layout_marginLeft="10dp"
             android:layout_marginTop="5dp"
             android:padding="2dp"
-            android:textColor="#4d4d4d" />
+            android:textColor="@color/song_list_text_primary" />
         <TextView
             android:id="@+id/subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="TextView"
-            android:layout_marginLeft="10dp"/>
+            android:layout_marginLeft="10dp"
+            android:textColor="@color/song_list_text_secondary"/>
     </LinearLayout>
 </LinearLayout>

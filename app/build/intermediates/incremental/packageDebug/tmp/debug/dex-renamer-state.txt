@@ -1,4 +1,16 @@
-#Wed Nov 25 15:06:14 CST 2020
-base.0=C\:\\Users\\Zacha\\AndroidStudioProjects\\MusicPlayer\\app\\build\\intermediates\\dex\\debug\\mergeDexDebug\\classes.dex
+#Sat May 23 21:17:45 CDT 2026
+path.4=8/classes.dex
+path.3=4/classes.dex
+path.2=1/classes.dex
+path.1=0/classes.dex
 path.0=classes.dex
+base.4=/home/strangequark/Desktop/MusicPlayer/app/build/intermediates/dex/debug/mergeProjectDexDebug/8/classes.dex
+base.3=/home/strangequark/Desktop/MusicPlayer/app/build/intermediates/dex/debug/mergeProjectDexDebug/4/classes.dex
+base.2=/home/strangequark/Desktop/MusicPlayer/app/build/intermediates/dex/debug/mergeProjectDexDebug/1/classes.dex
+base.1=/home/strangequark/Desktop/MusicPlayer/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+base.0=/home/strangequark/Desktop/MusicPlayer/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
+renamed.3=classes4.dex
+renamed.2=classes3.dex
+renamed.1=classes2.dex
 renamed.0=classes.dex
+renamed.4=classes5.dex

@@ -3,8 +3,6 @@ package com.strangequark.musicplayer.fragments;
 import android.content.Intent;
 import android.database.AbstractCursor;
 import android.database.Cursor;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -82,27 +80,13 @@ public class SongsFragment extends Fragment {
                     position = position - 1;
                 }
 
-                if(MainActivity.mp != null)
-                {
-                    MainActivity.mp.stop();
-                    MainActivity.mp.release();
-                    MainActivity.mp = null;
-                }
-                MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.allSongsFiles.get(position)));
-                if(MainActivity.mp == null)
-                    return;
-                MainActivity.mp.start();
-                MainActivity.acquireWakeLock(getContext());
-
                 MainActivity.currentSongPosition = position;
 
                 MainActivity.currentPlaylist = new ArrayList<>(MainActivity.allSongsFiles);
                 MainActivity.currentPlaylistString = new ArrayList<>(MainActivity.allSongs);
                 MainActivity.currentPlaylistArtistString = new ArrayList<>(MainActivity.allArtistsStrings);
-                MainActivity.currentSongFile = MainActivity.currentPlaylist.get(MainActivity.currentSongPosition);
-                MainActivity.currentSongString = MainActivity.currentPlaylistString.get(MainActivity.currentSongPosition);
-
-                MainActivity.playButton.setImageResource(R.drawable.playbutton);
+                if(!MainActivity.playTrackAt(getContext(), position))
+                    return;
 
                 Intent appInfo = new Intent(getActivity(), MediaPlayerActivity.class);
                 startActivity(appInfo);
