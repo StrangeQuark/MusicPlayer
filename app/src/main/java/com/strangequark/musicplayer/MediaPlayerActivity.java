@@ -19,6 +19,7 @@ import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.LruCache;
 import android.view.GestureDetector;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
@@ -26,6 +27,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -60,6 +62,7 @@ public class MediaPlayerActivity extends Activity{
     ImageButton nextButton;
     ImageButton repeatButton;
     ImageButton shuffleButton;
+    ImageButton songMenuButton;
     List<String> currentSong;
     List<String> currentArtist;
     ListView listView;
@@ -94,6 +97,8 @@ public class MediaPlayerActivity extends Activity{
     ExecutorService albumArtExecutor;
 
     private GestureDetector gdt;
+    private static final int MENU_GO_TO_ARTIST = 1;
+    private static final int MENU_GO_TO_ALBUM = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -109,6 +114,7 @@ public class MediaPlayerActivity extends Activity{
         textClock = (TextView)findViewById(R.id.textClock);
         textTotal = (TextView)findViewById(R.id.textTotal);
         albumArt = (ImageView)findViewById(R.id.imageView);
+        songMenuButton = (ImageButton)findViewById(R.id.songMenuButton);
 
         albumArt.setOnTouchListener(new View.OnTouchListener()
         {
@@ -117,6 +123,14 @@ public class MediaPlayerActivity extends Activity{
                 gdt.onTouchEvent(event);
                 return true;
             } });
+
+        songMenuButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v) {
+                showSongOptionsMenu(v);
+            }
+        });
 
         currentArtist = new ArrayList<String>();
         currentSong = new ArrayList<String>();
@@ -490,6 +504,44 @@ public class MediaPlayerActivity extends Activity{
         {
             startService(intent);
         }
+    }
+
+    private void showSongOptionsMenu(View anchor)
+    {
+        final Song song = MainActivity.getCurrentSong();
+        if(song == null)
+            return;
+
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add(0, MENU_GO_TO_ARTIST, 0, "Go to artist");
+        menu.getMenu().add(0, MENU_GO_TO_ALBUM, 1, "Go to album");
+        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                if(item.getItemId() == MENU_GO_TO_ARTIST)
+                {
+                    openMainActivityNavigation(MainActivity.TARGET_ARTIST, song);
+                    return true;
+                }
+                if(item.getItemId() == MENU_GO_TO_ALBUM)
+                {
+                    openMainActivityNavigation(MainActivity.TARGET_ALBUM, song);
+                    return true;
+                }
+                return false;
+            }
+        });
+        menu.show();
+    }
+
+    private void openMainActivityNavigation(String target, Song song)
+    {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtra(MainActivity.EXTRA_OPEN_TARGET, target);
+        intent.putExtra(MainActivity.EXTRA_ARTIST, song.artist);
+        intent.putExtra(MainActivity.EXTRA_ALBUM, song.album);
+        startActivity(intent);
     }
 
     private void doShuffle()

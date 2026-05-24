@@ -112,9 +112,10 @@
 
     <ListView
         android:id="@+id/songPlaying"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@+id/songMenuButton"
         android:layout_above="@+id/seekBar"/>
 
     <ImageView
@@ -124,5 +125,19 @@
         android:layout_marginTop="9mm"
         android:layout_above="@+id/seekBar"
         android:src="@drawable/missing_album_art"/>
+
+    <ImageButton
+        android:id="@+id/songMenuButton"
+        android:layout_width="9mm"
+        android:layout_height="9mm"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:adjustViewBounds="true"
+        android:background="@null"
+        android:contentDescription="Song options"
+        android:cropToPadding="false"
+        android:hapticFeedbackEnabled="true"
+        android:scaleType="center"
+        android:src="@drawable/ic_more_vert"/>
 
 </RelativeLayout>

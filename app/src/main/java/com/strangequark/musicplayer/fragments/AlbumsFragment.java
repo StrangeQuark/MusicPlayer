@@ -85,34 +85,7 @@ public class AlbumsFragment extends Fragment {
                     if(position < 0 || position >= albums.size())
                         return;
 
-                    tempPlaylist = new ArrayList<File>();
-                    tempPlaylistString = new ArrayList<String>();
-                    tempPlaylistArtistString = new ArrayList<String>();
-                    tempPlaylistTrackNumber = new ArrayList<Integer>();
-
-                    currentAlbum = albums.get(position);
-                    currentArtist = artists.get(position);
-
-                    for(int i = 0; i < MainActivity.songsAlbumsAndArtists.size(); i++)
-                    {
-                        Song song = MainActivity.allSongModels.get(i);
-                        if(song.album.equals(currentAlbum) && song.artist.equals(currentArtist))
-                        {
-                            tempPlaylistString.add(song.title);
-                            tempPlaylistArtistString.add(song.getArtistDurationText());
-                            tempPlaylist.add(song.getFile());
-                            tempPlaylistTrackNumber.add(song.trackNumber);
-                        }
-                    }
-
-                    MainActivity.concurrentSort(tempPlaylistTrackNumber, tempPlaylist, tempPlaylistArtistString, tempPlaylistString);
-
-                    aa2 = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, tempPlaylistString);
-                    lv.setAdapter(aa2);
-
-                    b = true;
-
-                    currentAlbumPosition = position;
+                    showAlbum(position);
                     return;
                 }
                 if(lv.getAdapter() == aa2)
@@ -130,6 +103,59 @@ public class AlbumsFragment extends Fragment {
                 }
             }
         });
+    }
+
+    public void openAlbum(String album, String artist)
+    {
+        if(lv == null || albums == null || artists == null)
+            return;
+
+        refreshAlbums();
+        for(int i = 0; i < albums.size(); i++)
+        {
+            boolean albumMatches = albums.get(i).equals(album);
+            boolean artistMatches = artist == null || artists.get(i).equals(artist);
+            if(albumMatches && artistMatches)
+            {
+                showAlbum(i);
+                return;
+            }
+        }
+    }
+
+    private void showAlbum(int position)
+    {
+        if(position < 0 || position >= albums.size())
+            return;
+
+        tempPlaylist = new ArrayList<File>();
+        tempPlaylistString = new ArrayList<String>();
+        tempPlaylistArtistString = new ArrayList<String>();
+        tempPlaylistTrackNumber = new ArrayList<Integer>();
+
+        currentAlbum = albums.get(position);
+        currentArtist = artists.get(position);
+
+        for(int i = 0; i < MainActivity.allSongModels.size(); i++)
+        {
+            Song song = MainActivity.allSongModels.get(i);
+            if(song.album.equals(currentAlbum) && song.artist.equals(currentArtist))
+            {
+                tempPlaylistString.add(song.title);
+                tempPlaylistArtistString.add(song.getArtistDurationText());
+                tempPlaylist.add(song.getFile());
+                tempPlaylistTrackNumber.add(song.trackNumber);
+            }
+        }
+
+        MainActivity.concurrentSort(tempPlaylistTrackNumber, tempPlaylist, tempPlaylistArtistString, tempPlaylistString);
+
+        aa2 = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, tempPlaylistString);
+        lv.setAdapter(aa2);
+        lv.post(() -> lv.setSelection(0));
+
+        b = true;
+        currentAlbumPosition = position;
     }
 
     public void goBack()

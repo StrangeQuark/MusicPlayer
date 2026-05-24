@@ -84,21 +84,7 @@ public class ArtistsFragment extends Fragment {
                     if(position < 0 || position >= artists.size())
                         return;
 
-                    List<String> temp = new ArrayList<String>();
-                    temp.add("All songs");
-
-                    currentArtist = artists.get(position);
-                    for (int i = 0; i < MainActivity.allSongModels.size(); i++) {
-                        Song song = MainActivity.allSongModels.get(i);
-                        if (song.artist.equals(currentArtist) && !temp.contains(song.album))
-                            temp.add(song.album);
-                    }
-                    Collections.sort(temp.subList(1, temp.size()), String.CASE_INSENSITIVE_ORDER);
-                    aa2 = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, temp);
-                    lv.setAdapter(aa2);
-                    b = true;
-
-                    currentArtistPosition = position;
+                    showArtist(position);
                     return;
                 }
                 if(lv.getAdapter() == aa2)
@@ -151,6 +137,40 @@ public class ArtistsFragment extends Fragment {
                 }
             }
         });
+    }
+
+    public void openArtist(String artist)
+    {
+        if(lv == null || artists == null)
+            return;
+
+        refreshArtists();
+        int position = artists.indexOf(artist);
+        if(position >= 0)
+            showArtist(position);
+    }
+
+    private void showArtist(int position)
+    {
+        if(position < 0 || position >= artists.size())
+            return;
+
+        List<String> temp = new ArrayList<String>();
+        temp.add("All songs");
+
+        currentArtist = artists.get(position);
+        for (int i = 0; i < MainActivity.allSongModels.size(); i++) {
+            Song song = MainActivity.allSongModels.get(i);
+            if (song.artist.equals(currentArtist) && !temp.contains(song.album))
+                temp.add(song.album);
+        }
+        Collections.sort(temp.subList(1, temp.size()), String.CASE_INSENSITIVE_ORDER);
+        aa2 = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, temp);
+        lv.setAdapter(aa2);
+        lv.post(() -> lv.setSelection(0));
+        b = true;
+
+        currentArtistPosition = position;
     }
 
     public void goBack()
