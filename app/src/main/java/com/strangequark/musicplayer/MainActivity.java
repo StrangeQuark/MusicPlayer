@@ -48,6 +48,12 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity
 {
+    public static final String EXTRA_OPEN_TARGET = "com.strangequark.musicplayer.extra.OPEN_TARGET";
+    public static final String EXTRA_ARTIST = "com.strangequark.musicplayer.extra.ARTIST";
+    public static final String EXTRA_ALBUM = "com.strangequark.musicplayer.extra.ALBUM";
+    public static final String TARGET_ARTIST = "artist";
+    public static final String TARGET_ALBUM = "album";
+
     static public MediaPlayer mp;
     static public MediaPlayer nextMp;
     static public List<File> allSongsFiles;
@@ -108,6 +114,8 @@ public class MainActivity extends AppCompatActivity
     Button button;
     AudioManager audioManager;
     ExecutorService libraryExecutor;
+    ViewPager viewPager;
+    Intent pendingNavigationIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -201,11 +209,13 @@ public class MainActivity extends AppCompatActivity
         {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
         }
+
+        handleNavigationIntent(getIntent());
     }
 
     private void setUpTabs()
     {
-        ViewPager vp = (ViewPager)findViewById(R.id.viewPager);
+        viewPager = (ViewPager)findViewById(R.id.viewPager);
         TabLayout tab = (TabLayout)findViewById(R.id.tabs);
 
         ViewPagerAdapter adapter = new ViewPagerAdapter(getSupportFragmentManager());
@@ -214,13 +224,22 @@ public class MainActivity extends AppCompatActivity
         adapter.addFragment(albumsFragment, "Albums");
         adapter.addFragment(songsFragment, "Songs");
 
-        vp.setAdapter(adapter);
-        tab.setupWithViewPager(vp);
+        viewPager.setAdapter(adapter);
+        viewPager.setOffscreenPageLimit(3);
+        tab.setupWithViewPager(viewPager);
 
         tab.getTabAt(0).setText("Playlist");
         tab.getTabAt(1).setText("Artists");
         tab.getTabAt(2).setText("Albums");
         tab.getTabAt(3).setText("Songs");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent)
+    {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNavigationIntent(intent);
     }
 
     @Override
@@ -394,6 +413,12 @@ public class MainActivity extends AppCompatActivity
         libraryLoaded = true;
         libraryLoading = false;
         refreshLibraryFragments();
+        if(pendingNavigationIntent != null)
+        {
+            Intent intent = pendingNavigationIntent;
+            pendingNavigationIntent = null;
+            handleNavigationIntent(intent);
+        }
     }
 
     private static String getCursorString(Cursor cursor, int column)
@@ -464,6 +489,50 @@ public class MainActivity extends AppCompatActivity
         {
             return songsByPath.get(key);
         }
+    }
+
+    public static Song getCurrentSong()
+    {
+        if(currentSongFile == null || songsByPath == null)
+            return null;
+        return songsByPath.get(currentSongFile.getAbsolutePath());
+    }
+
+    private void handleNavigationIntent(Intent intent)
+    {
+        if(intent == null || intent.getStringExtra(EXTRA_OPEN_TARGET) == null)
+            return;
+
+        if(!libraryLoaded)
+        {
+            pendingNavigationIntent = intent;
+            return;
+        }
+
+        String target = intent.getStringExtra(EXTRA_OPEN_TARGET);
+        String artist = intent.getStringExtra(EXTRA_ARTIST);
+        String album = intent.getStringExtra(EXTRA_ALBUM);
+
+        if(TARGET_ARTIST.equals(target) && artist != null)
+            openArtist(artist);
+        else if(TARGET_ALBUM.equals(target) && album != null)
+            openAlbum(album, artist);
+    }
+
+    private void openArtist(String artist)
+    {
+        if(viewPager != null)
+            viewPager.setCurrentItem(1);
+        if(artistsFragment != null)
+            artistsFragment.openArtist(artist);
+    }
+
+    private void openAlbum(String album, String artist)
+    {
+        if(viewPager != null)
+            viewPager.setCurrentItem(2);
+        if(albumsFragment != null)
+            albumsFragment.openAlbum(album, artist);
     }
 
     public static int findFilePosition(List<File> files, File file)
