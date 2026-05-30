@@ -22,15 +22,23 @@ import com.strangequark.musicplayer.R;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class PlaylistsFragment extends Fragment {
 
-    private static final String PLAYLIST_VERSION = "#playlist-v2";
+    private static final String LEGACY_PLAYLIST_VERSION = "#playlist-v2";
+    private static final String LEGACY_PLAYLIST_FILE = "playlists.txt";
+    private static final String PLAYLIST_FILE = "playlists.json";
+    private static final int PLAYLIST_SCHEMA_VERSION = 3;
     PlaylistsFragment pf = this;
     Button newPlaylistButton;
     ListView playistListView;
@@ -105,27 +113,30 @@ public class PlaylistsFragment extends Fragment {
         try
         {
             Context appContext = context.getApplicationContext();
-            FileOutputStream fos = new FileOutputStream(new File(appContext.getFilesDir(), "playlists.txt"));
-            FileWriter fw = new FileWriter(fos.getFD());
-
-            fw.write(PLAYLIST_VERSION + "\n");
+            JSONObject root = new JSONObject();
+            JSONArray playlists = new JSONArray();
+            root.put("version", PLAYLIST_SCHEMA_VERSION);
+            root.put("playlists", playlists);
 
             for (int i = 0; i < allPlaylists.size(); i++)
             {
-                fw.write(allPlaylistsNames.get(i));
+                JSONObject playlist = new JSONObject();
+                JSONArray songs = new JSONArray();
+                playlist.put("name", allPlaylistsNames.get(i));
 
                 for (int j = 0; j < allPlaylists.get(i).size(); j++)
-                {
-                    fw.write("," + allPlaylists.get(i).get(j));
-                }
-                fw.write("\n");
+                    songs.put(allPlaylists.get(i).get(j));
+
+                playlist.put("songs", songs);
+                playlists.put(playlist);
             }
 
-            fw.flush();
-            fw.close();
-
+            FileOutputStream fos = new FileOutputStream(new File(appContext.getFilesDir(), PLAYLIST_FILE));
+            OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+            writer.write(root.toString(2));
+            writer.flush();
             fos.getFD().sync();
-            fos.close();
+            writer.close();
         }catch(Exception ex){ex.printStackTrace();}
     }
 
@@ -139,18 +150,61 @@ public class PlaylistsFragment extends Fragment {
 
         try
         {
-            File file = new File(getContext().getApplicationContext().getFilesDir(), "playlists.txt");
-            if(!file.exists())
+            File filesDir = getContext().getApplicationContext().getFilesDir();
+            File playlistFile = new File(filesDir, PLAYLIST_FILE);
+            if(playlistFile.exists())
             {
-                aa.notifyDataSetChanged();
-                return;
+                loadJsonPlaylists(playlistFile);
+            }
+            else
+            {
+                File legacyFile = new File(filesDir, LEGACY_PLAYLIST_FILE);
+                boolean shouldSaveJson = loadLegacyPlaylists(legacyFile);
+                if(shouldSaveJson)
+                    savePlaylists(getContext());
             }
 
-            BufferedReader reader = new BufferedReader(new FileReader(file));
+            aa.notifyDataSetChanged();
+        }catch(Exception ex){ex.printStackTrace();}
+    }
 
+    private void loadJsonPlaylists(File file) throws Exception
+    {
+        String json = readTextFile(file);
+        JSONObject root = new JSONObject(json);
+        JSONArray playlists = root.optJSONArray("playlists");
+        if(playlists == null)
+            return;
+
+        for(int i = 0; i < playlists.length(); i++)
+        {
+            JSONObject playlist = playlists.optJSONObject(i);
+            if(playlist == null)
+                continue;
+
+            allPlaylistsNames.add(playlist.optString("name", ""));
+            List<String> songs = new ArrayList<String>();
+            JSONArray songKeys = playlist.optJSONArray("songs");
+            if(songKeys != null)
+            {
+                for(int j = 0; j < songKeys.length(); j++)
+                    songs.add(songKeys.optString(j, ""));
+            }
+            allPlaylists.add(songs);
+        }
+    }
+
+    private boolean loadLegacyPlaylists(File file) throws Exception
+    {
+        if(!file.exists())
+            return false;
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        try
+        {
             String s = reader.readLine();
-            boolean isV2 = PLAYLIST_VERSION.equals(s);
-            boolean shouldSaveV2 = !isV2 && MainActivity.libraryLoaded;
+            boolean isV2 = LEGACY_PLAYLIST_VERSION.equals(s);
+            boolean shouldSaveJson = isV2 || MainActivity.libraryLoaded;
 
             if(isV2)
                 s = reader.readLine();
@@ -159,7 +213,12 @@ public class PlaylistsFragment extends Fragment {
             {
                 List<String> temp = new ArrayList<String>();
 
-                String[] strings = s.split(",");
+                String[] strings = s.split(",", -1);
+                if(strings.length == 0)
+                {
+                    s = reader.readLine();
+                    continue;
+                }
 
                 allPlaylistsNames.add(strings[0]);
 
@@ -188,12 +247,31 @@ public class PlaylistsFragment extends Fragment {
                 s = reader.readLine();
             }
 
+            return shouldSaveJson;
+        }
+        finally
+        {
             reader.close();
+        }
+    }
 
-            if(shouldSaveV2)
-                savePlaylists(getContext());
-
-            aa.notifyDataSetChanged();
-        }catch(Exception ex){ex.printStackTrace();}
+    private static String readTextFile(File file) throws Exception
+    {
+        StringBuilder builder = new StringBuilder();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        try
+        {
+            String line = reader.readLine();
+            while(line != null)
+            {
+                builder.append(line).append('\n');
+                line = reader.readLine();
+            }
+        }
+        finally
+        {
+            reader.close();
+        }
+        return builder.toString();
     }
 }

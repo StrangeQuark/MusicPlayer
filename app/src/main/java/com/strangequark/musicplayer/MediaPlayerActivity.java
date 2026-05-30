@@ -1,13 +1,14 @@
 package com.strangequark.musicplayer;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
@@ -31,6 +32,8 @@ import android.widget.PopupMenu;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
 import android.support.v4.media.MediaMetadataCompat;
@@ -44,12 +47,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MediaPlayerActivity extends Activity{
+public class MediaPlayerActivity extends AppCompatActivity{
     public static final String ACTION_PREVIOUS = "com.strangequark.musicplayer.action.PREVIOUS";
     public static final String ACTION_STOP = "com.strangequark.musicplayer.action.STOP";
     public static final String ACTION_TOGGLE_PLAYBACK = "com.strangequark.musicplayer.action.TOGGLE_PLAYBACK";
@@ -81,6 +85,7 @@ public class MediaPlayerActivity extends Activity{
     static public NotificationManager mNotificationManager;
     static public Notification notification;
     private static final int SEEK_UPDATE_DELAY_MS = 500;
+    private static final int REQUEST_POST_NOTIFICATIONS = 2;
     private static final String[] ALBUM_ART_EXTENSIONS = new String[] {
             "jpg",
             "png",
@@ -108,6 +113,12 @@ public class MediaPlayerActivity extends Activity{
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         activeInstance = this;
         albumArtExecutor = Executors.newSingleThreadExecutor();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackPressed();
+            }
+        });
 
         gdt = new GestureDetector(new GestureListener());
 
@@ -423,6 +434,7 @@ public class MediaPlayerActivity extends Activity{
         updateAlbumImage(MainActivity.currentSongFile);
 
         r.run();
+        requestNotificationPermissionIfNeeded();
         addNotification();
     }
 
@@ -475,13 +487,13 @@ public class MediaPlayerActivity extends Activity{
             int time = MainActivity.mp.getDuration();
             int seconds = (int) (time / 1000) % 60 ;
             int minutes = (int) ((time / (1000*60)) % 60);
-            String secondsStr = String.format("%02d", seconds);
+            String secondsStr = String.format(Locale.US, "%02d", seconds);
             textTotal.setText(minutes + ":" + secondsStr);
 
             time = MainActivity.mp.getCurrentPosition();
             seconds = (int) (time / 1000) % 60 ;
             minutes = (int) ((time / (1000*60)) % 60);
-            secondsStr = String.format("%02d", seconds);
+            secondsStr = String.format(Locale.US, "%02d", seconds);
             textClock.setText(minutes + ":" + secondsStr);
         }
         catch(IllegalStateException ex)
@@ -503,6 +515,15 @@ public class MediaPlayerActivity extends Activity{
         else
         {
             startService(intent);
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded()
+    {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+        {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_POST_NOTIFICATIONS);
         }
     }
 
@@ -976,7 +997,7 @@ public class MediaPlayerActivity extends Activity{
 
     private boolean isAlbumArtFile(File file)
     {
-        String name = file.getName().toLowerCase();
+        String name = file.getName().toLowerCase(Locale.ROOT);
         for(String extension : ALBUM_ART_EXTENSIONS)
         {
             if(name.endsWith("." + extension))
@@ -1043,15 +1064,15 @@ public class MediaPlayerActivity extends Activity{
         super.onDestroy();
     }
 
-    @Override
-    public void onBackPressed() {
-        if(listView.getAdapter() == aa2)
+    private void handleBackPressed()
+    {
+        if(listView != null && listView.getAdapter() == aa2)
         {
             listView.setAdapter(aa);
             albumArt.setVisibility(View.VISIBLE);
             return;
         }
-        super.onBackPressed();
+        finish();
     }
 
     private class GestureListener extends GestureDetector.SimpleOnGestureListener
