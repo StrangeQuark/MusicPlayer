@@ -28,16 +28,31 @@ public class SongListAdapter extends ArrayAdapter<String> {
     }
 
     public View getView(int position,View view,ViewGroup parent) {
-        LayoutInflater inflater=context.getLayoutInflater();
-        View rowView=inflater.inflate(R.layout.songlistlayout, null,true);
+        ViewHolder holder;
 
-        TextView titleText = (TextView) rowView.findViewById(R.id.title);
-        TextView subtitleText = (TextView) rowView.findViewById(R.id.subtitle);
+        if(view == null)
+        {
+            LayoutInflater inflater=context.getLayoutInflater();
+            view=inflater.inflate(R.layout.songlistlayout, parent, false);
+            holder = new ViewHolder();
+            holder.titleText = (TextView) view.findViewById(R.id.title);
+            holder.subtitleText = (TextView) view.findViewById(R.id.subtitle);
+            view.setTag(holder);
+        }
+        else
+        {
+            holder = (ViewHolder) view.getTag();
+        }
 
-        titleText.setText(maintitle.get(position));
-        subtitleText.setText(subtitle.get(position));
+        holder.titleText.setText(maintitle.get(position));
+        holder.subtitleText.setText(subtitle.get(position));
 
-        return rowView;
+        return view;
 
     };
+
+    private static class ViewHolder {
+        TextView titleText;
+        TextView subtitleText;
+    }
 }

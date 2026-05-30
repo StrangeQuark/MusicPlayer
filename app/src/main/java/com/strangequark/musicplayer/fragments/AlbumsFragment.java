@@ -2,8 +2,6 @@ package com.strangequark.musicplayer.fragments;
 
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -19,6 +17,7 @@ import androidx.fragment.app.Fragment;
 import com.strangequark.musicplayer.MainActivity;
 import com.strangequark.musicplayer.MediaPlayerActivity;
 import com.strangequark.musicplayer.R;
+import com.strangequark.musicplayer.Song;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,6 +36,8 @@ public class AlbumsFragment extends Fragment {
     String currentAlbum;
     String currentArtist;
     int currentAlbumPosition;
+    List<String> albums;
+    List<String> artists;
     List<File> tempPlaylist;
     List<String> tempPlaylistString;
     List<String> tempPlaylistArtistString;
@@ -68,64 +69,23 @@ public class AlbumsFragment extends Fragment {
     {
         lv = (ListView)getView().findViewById(R.id.albumsListView);
 
-        String[] projection = {
-                MediaStore.Audio.Albums.ALBUM,
-                MediaStore.Audio.Albums.ARTIST
-        };
-
-        Cursor cursor = getActivity().managedQuery(
-                MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                projection,
-                null,
-                null,
-                MediaStore.Audio.Albums.DEFAULT_SORT_ORDER);
-
-        List<String> albums = new ArrayList<String>();
-        List<String> artists = new ArrayList<String>();
-
-        while(cursor.moveToNext()){
-            if(!albums.contains(cursor.getString(0))) {
-                albums.add(cursor.getString(0));
-                artists.add(cursor.getString(1));
-            }
-        }
+        albums = new ArrayList<String>();
+        artists = new ArrayList<String>();
 
         aa = new ArrayAdapter(getContext(), android.R.layout.simple_list_item_1, albums);
 
         lv.setAdapter(aa);
+        refreshAlbums();
 
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if(lv.getAdapter() == aa)
                 {
-                    tempPlaylist = new ArrayList<File>();
-                    tempPlaylistString = new ArrayList<String>();
-                    tempPlaylistArtistString = new ArrayList<String>();
-                    tempPlaylistTrackNumber = new ArrayList<Integer>();
+                    if(position < 0 || position >= albums.size())
+                        return;
 
-                    currentAlbum = albums.get(position);
-                    currentArtist = artists.get(position);
-
-                    for(int i = 0; i < MainActivity.songsAlbumsAndArtists.size(); i++)
-                    {
-                        if(MainActivity.songsAlbumsAndArtists.get(i).contains(lv.getItemAtPosition(position).toString()) && MainActivity.songsAlbumsAndArtists.get(i).contains(currentAlbum) && MainActivity.songsAlbumsAndArtists.get(i).contains(currentArtist) && MainActivity.allAlbumsStrings.get(i).equals(lv.getItemAtPosition(position).toString()))
-                        {
-                            tempPlaylistString.add(MainActivity.allSongs.get(i));
-                            tempPlaylistArtistString.add(MainActivity.allArtistsStrings.get(i));
-                            tempPlaylist.add(MainActivity.allSongsFiles.get(i));
-                            tempPlaylistTrackNumber.add(MainActivity.allSongsTrackNumbers.get(i));
-                        }
-                    }
-
-                    MainActivity.concurrentSort(tempPlaylistTrackNumber, tempPlaylist, tempPlaylistArtistString, tempPlaylistString);
-
-                    aa2 = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, tempPlaylistString);
-                    lv.setAdapter(aa2);
-
-                    b = true;
-
-                    currentAlbumPosition = position;
+                    showAlbum(position);
                     return;
                 }
                 if(lv.getAdapter() == aa2)
@@ -134,25 +94,68 @@ public class AlbumsFragment extends Fragment {
                     MainActivity.currentPlaylistString = new ArrayList<String>(tempPlaylistString);
                     MainActivity.currentPlaylistArtistString = new ArrayList<String>(tempPlaylistArtistString);
                     MainActivity.currentPlaylistTrackNumbers = new ArrayList<Integer>(tempPlaylistTrackNumber);
-                    if(MainActivity.mp != null)
-                    {
-                        MainActivity.mp.stop();
-                        MainActivity.mp.release();
-                        MainActivity.mp = null;
-                    }
-                    MainActivity.mp = MediaPlayer.create(getContext(), Uri.fromFile(MainActivity.currentPlaylist.get(position)));
-                    MainActivity.mp.start();
-
                     MainActivity.currentSongPosition = position;
-                    MainActivity.currentPlaylistArtistString.add(MainActivity.allArtistsStrings.get(position));
-
-                    MainActivity.playButton.setImageResource(R.drawable.playbutton);
+                    if(!MainActivity.playTrackAt(getContext(), position))
+                        return;
 
                     Intent appInfo = new Intent(getActivity(), MediaPlayerActivity.class);
                     startActivity(appInfo);
                 }
             }
         });
+    }
+
+    public void openAlbum(String album, String artist)
+    {
+        if(lv == null || albums == null || artists == null)
+            return;
+
+        refreshAlbums();
+        for(int i = 0; i < albums.size(); i++)
+        {
+            boolean albumMatches = albums.get(i).equals(album);
+            boolean artistMatches = artist == null || artists.get(i).equals(artist);
+            if(albumMatches && artistMatches)
+            {
+                showAlbum(i);
+                return;
+            }
+        }
+    }
+
+    private void showAlbum(int position)
+    {
+        if(position < 0 || position >= albums.size())
+            return;
+
+        tempPlaylist = new ArrayList<File>();
+        tempPlaylistString = new ArrayList<String>();
+        tempPlaylistArtistString = new ArrayList<String>();
+        tempPlaylistTrackNumber = new ArrayList<Integer>();
+
+        currentAlbum = albums.get(position);
+        currentArtist = artists.get(position);
+
+        for(int i = 0; i < MainActivity.allSongModels.size(); i++)
+        {
+            Song song = MainActivity.allSongModels.get(i);
+            if(song.album.equals(currentAlbum) && song.artist.equals(currentArtist))
+            {
+                tempPlaylistString.add(song.title);
+                tempPlaylistArtistString.add(song.getArtistDurationText());
+                tempPlaylist.add(song.getFile());
+                tempPlaylistTrackNumber.add(song.trackNumber);
+            }
+        }
+
+        MainActivity.concurrentSort(tempPlaylistTrackNumber, tempPlaylist, tempPlaylistArtistString, tempPlaylistString);
+
+        aa2 = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, tempPlaylistString);
+        lv.setAdapter(aa2);
+        lv.post(() -> lv.setSelection(0));
+
+        b = true;
+        currentAlbumPosition = position;
     }
 
     public void goBack()
@@ -163,5 +166,51 @@ public class AlbumsFragment extends Fragment {
             b = false;
             return;
         }
+    }
+
+    public void refreshAlbums()
+    {
+        if(albums == null || artists == null || aa == null)
+            return;
+
+        albums.clear();
+        artists.clear();
+        for(int i = 0; i < MainActivity.allSongModels.size(); i++)
+        {
+            Song song = MainActivity.allSongModels.get(i);
+            if(!albums.contains(song.album))
+            {
+                albums.add(song.album);
+                artists.add(song.artist);
+            }
+        }
+
+        List<Integer> indices = new ArrayList<Integer>();
+        for(int i = 0; i < albums.size(); i++)
+            indices.add(i);
+
+        Collections.sort(indices, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer left, Integer right) {
+                int albumCompare = albums.get(left).compareToIgnoreCase(albums.get(right));
+                if(albumCompare != 0)
+                    return albumCompare;
+                return artists.get(left).compareToIgnoreCase(artists.get(right));
+            }
+        });
+
+        List<String> sortedAlbums = new ArrayList<String>();
+        List<String> sortedArtists = new ArrayList<String>();
+        for(Integer index : indices)
+        {
+            sortedAlbums.add(albums.get(index));
+            sortedArtists.add(artists.get(index));
+        }
+
+        albums.clear();
+        albums.addAll(sortedAlbums);
+        artists.clear();
+        artists.addAll(sortedArtists);
+        aa.notifyDataSetChanged();
     }
 }

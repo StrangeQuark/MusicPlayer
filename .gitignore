@@ -9,7 +9,15 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+/app/build/
 /captures
 .externalNativeBuild
 .cxx
 local.properties
+
+# Release artifacts and signing material should stay outside source control.
+/release1/
+*.apk
+*.aab
+*.jks
+*.keystore
