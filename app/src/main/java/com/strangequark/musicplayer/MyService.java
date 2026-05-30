@@ -29,7 +29,10 @@ public class MyService extends Service
     public void onCreate() {
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         registerAudioDisconnectHandlers();
-        startForeground(1, MediaPlayerActivity.notification);
+        if(MediaPlayerActivity.notification != null)
+            startForeground(1, MediaPlayerActivity.notification);
+        else
+            stopSelf();
         super.onCreate();
     }
 
@@ -40,6 +43,8 @@ public class MyService extends Service
             MediaPlayerActivity.handleNotificationAction(getApplicationContext(), intent.getAction());
             if(MediaPlayerActivity.notification != null)
                 startForeground(1, MediaPlayerActivity.notification);
+            else
+                stopSelf();
         }
         return START_STICKY;
     }

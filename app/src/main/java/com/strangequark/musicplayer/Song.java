@@ -1,6 +1,7 @@
 package com.strangequark.musicplayer;
 
 import java.io.File;
+import java.util.Locale;
 
 public class Song {
     public final long mediaStoreId;
@@ -35,6 +36,6 @@ public class Song {
     public String getArtistDurationText() {
         int minutes = (durationMs / (1000 * 60)) % 60;
         int seconds = (durationMs / 1000) % 60;
-        return artist + " \u00B7 " + minutes + ":" + String.format("%02d", seconds);
+        return artist + " \u00B7 " + minutes + ":" + String.format(Locale.US, "%02d", seconds);
     }
 }

@@ -1,5 +1,6 @@
 package com.strangequark.musicplayer;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -48,6 +49,7 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity
 {
+    private static final int REQUEST_AUDIO_PERMISSION = 1;
     public static final String EXTRA_OPEN_TARGET = "com.strangequark.musicplayer.extra.OPEN_TARGET";
     public static final String EXTRA_ARTIST = "com.strangequark.musicplayer.extra.ARTIST";
     public static final String EXTRA_ALBUM = "com.strangequark.musicplayer.extra.ALBUM";
@@ -133,8 +135,8 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View v) {
                 finish();
                 startActivity(getIntent());
-                Intent dialogIntent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
-                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                Intent dialogIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                dialogIntent.setData(Uri.parse("package:" + getPackageName()));
                 startActivity(dialogIntent);
             }
         });
@@ -207,10 +209,16 @@ public class MainActivity extends AppCompatActivity
         }
         else
         {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+            ActivityCompat.requestPermissions(this, new String[]{getAudioReadPermission()}, REQUEST_AUDIO_PERMISSION);
         }
 
         handleNavigationIntent(getIntent());
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackPressed();
+            }
+        });
     }
 
     private void setUpTabs()
@@ -242,8 +250,8 @@ public class MainActivity extends AppCompatActivity
         handleNavigationIntent(intent);
     }
 
-    @Override
-    public void onBackPressed() {
+    private void handleBackPressed()
+    {
         if(artistsFragment.getBoolean()) {
             artistsFragment.goBack();
             return;
@@ -262,7 +270,7 @@ public class MainActivity extends AppCompatActivity
 
         switch (requestCode)
         {
-            case 1:
+            case REQUEST_AUDIO_PERMISSION:
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED)
                 {
@@ -280,7 +288,14 @@ public class MainActivity extends AppCompatActivity
     private boolean hasStoragePermission()
     {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+                ActivityCompat.checkSelfPermission(this, getAudioReadPermission()) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private static String getAudioReadPermission()
+    {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            return Manifest.permission.READ_MEDIA_AUDIO;
+        return Manifest.permission.READ_EXTERNAL_STORAGE;
     }
 
     private void loadMusicAsync()
